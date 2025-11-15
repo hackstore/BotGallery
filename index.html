@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Telegram Web Client</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2aabee;
+            --primary-dark: #1e8cc3;
+            --success: #34c759;
+            --danger: #ff3b30;
+            --warning: #ff9500;
+            --bg-gradient: linear-gradient(135deg, #18222d 0%, #0d131a 100%);
+            --card-bg: #1c1c1e;
+            --text-primary: #ffffff;
+            --text-secondary: #8e8e93;
+            --input-bg: #2c2c2e;
+            --border-color: #2a2a2e;
+            --hover-bg: rgba(42, 171, 238, 0.1);
+            --border-radius: 12px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: var(--text-primary);
+        }
+
+        .container {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            width: 100%;
+            max-width: 1400px;
+            height: 90vh;
+            display: flex;
+            position: relative;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 340px;
+            background: #151516;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #1a1a1d;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .user-info h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .user-status {
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.3);
+        }
+
+        .status-dot.offline {
+            background: var(--danger);
+            box-shadow: 0 0 0 2px rgba(255, 59, 48, 0.3);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .tabs {
+            display: flex;
+            background: #151516;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 14px;
+            text-align: center;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .search-box {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(42, 171, 238, 0.15);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .chat-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .chat-item.active {
+            background: var(--hover-bg);
+            border-left: 3px solid var(--primary);
+        }
+
+        .chat-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .chat-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .chat-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .chat-name {
+            font-weight: 600;
+            font-size: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+
+        .chat-preview {
+            color: var(--text-secondary);
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .unread-badge {
+            background: var(--primary);
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0d1117;
+        }
+
+        .chat-header-bar {
+            padding: 15px 20px;
+            background: #1a1a1d;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .chat-status {
+            font-size: 13px;
+            color: var(--success);
+            margin-top: 3px;
+        }
+
+        .messages-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .welcome-icon {
+            font-size: 80px;
+            color: var(--primary);
+            margin-bottom: 20px;
+            opacity: 0.7;
+        }
+
+        .welcome-screen h2 {
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+
+        .welcome-screen p {
+            color: var(--text-secondary);
+            font-size: 16px;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 70%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.incoming {
+            align-self: flex-start;
+        }
+
+        .message.outgoing {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .message-bubble {
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 100%;
+            word-wrap: break-word;
+        }
+
+        .message.incoming .message-bubble {
+            background: #1f1f1f;
+            border: 1px solid var(--border-color);
+        }
+
+        .message.outgoing .message-bubble {
+            background: var(--primary);
+            color: white;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 5px;
+            color: var(--primary);
+        }
+
+        .message.outgoing .message-sender {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .message-text {
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 5px;
+        }
+
+        .message-input-container {
+            padding: 15px 20px;
+            background: #1a1a1d;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            color: var(--text-primary);
+            font-size: 15px;
+            resize: none;
+            max-height: 120px;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .message-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(42, 171, 238, 0.15);
+        }
+        
+        .message-bubble img {
+            max-width: 360px;
+            max-height: 480px;
+            width: auto;
+            height: auto;
+            display: block;
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        /* responsive tweak */
+        @media (max-width: 768px) {
+            .message-bubble img {
+                max-width: 80vw;
+                max-height: 60vh;
+            }
+        }
+        
+        
+
+        .send-btn {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            background: #3a3a3c;
+            cursor: not-allowed;
+        }
+
+        /* Login Modal */
+        .login-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .login-modal.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .login-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: var(--shadow);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-icon {
+            font-size: 56px;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .login-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .step {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #3a3a3c;
+            transition: var(--transition);
+        }
+
+        .step.active {
+            background: var(--primary);
+            transform: scale(1.3);
+        }
+
+        .login-step {
+            display: none;
+        }
+
+        .login-step.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 14px 20px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 16px;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .input-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(42, 171, 238, 0.15);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .login-btn:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .login-btn:disabled {
+            background: #3a3a3c;
+            cursor: not-allowed;
+        }
+
+        .error-alert {
+            background: rgba(255, 59, 48, 0.15);
+            border: 1px solid var(--danger);
+            color: #ff7a7a;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .error-alert.show {
+            display: block;
+        }
+
+        .loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(42, 171, 238, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(42, 171, 238, 0.3);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(42, 171, 238, 0.5);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                height: 100vh;
+                border-radius: 0;
+            }
+
+            .sidebar {
+                position: absolute;
+                width: 85%;
+                height: 100%;
+                z-index: 200;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .message {
+                max-width: 85%;
+            }
+
+            .login-card {
+                padding: 30px 20px;
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px 20px;
+            box-shadow: var(--shadow);
+            display: none;
+            animation: slideIn 0.3s ease;
+            z-index: 2000;
+            max-width: 350px;
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Modal -->
+        <div class="login-modal" id="loginModal">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="login-icon">
+                        <i class="fab fa-telegram"></i>
+                    </div>
+                    <h2 class="login-title">Welcome to Telegram</h2>
+                    <p class="login-subtitle">Sign in to your account</p>
+                </div>
+
+                <div class="step-indicator">
+                    <div class="step active" data-step="1"></div>
+                    <div class="step" data-step="2"></div>
+                    <div class="step" data-step="3"></div>
+                </div>
+
+                <div class="error-alert" id="loginError"></div>
+
+                <!-- Phone Step -->
+                <div class="login-step active" id="phoneStep">
+                    <div class="input-group">
+                        <label class="input-label">Phone Number</label>
+                        <input type="tel" class="input-field" id="phoneInput" placeholder="+1234567890" autocomplete="tel">
+                    </div>
+                    <button class="login-btn" id="sendCodeBtn">
+                        <span>Send Code</span>
+                    </button>
+                </div>
+
+                <!-- Code Step -->
+                <div class="login-step" id="codeStep">
+                    <div class="input-group">
+                        <label class="input-label">Verification Code</label>
+                        <input type="text" class="input-field" id="codeInput" placeholder="12345" maxlength="5" autocomplete="one-time-code">
+                    </div>
+                    <button class="login-btn" id="verifyCodeBtn">
+                        <span>Verify Code</span>
+                    </button>
+                </div>
+
+                <!-- Password Step -->
+                <div class="login-step" id="passwordStep">
+                    <div class="input-group">
+                        <label class="input-label">Two-Factor Password</label>
+                        <input type="password" class="input-field" id="passwordInput" placeholder="Enter your password" autocomplete="current-password">
+                    </div>
+                    <button class="login-btn" id="verifyPasswordBtn">
+                        <span>Sign In</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="user-info">
+                    <h3 id="userName">User</h3>
+                    <div class="user-status">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="statusText">Disconnected</span>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="icon-btn" onclick="loadChats()" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="icon-btn" onclick="logout()" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('chats')">
+                    <i class="fas fa-comments"></i> Chats
+                </div>
+                <div class="tab" onclick="switchTab('search')">
+                    <i class="fas fa-search"></i> Search
+                </div>
+            </div>
+
+            <div id="chatsTab">
+                <div class="search-box" style="position: relative;">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" id="chatSearch" placeholder="Search chats...">
+                </div>
+                <div class="chat-list" id="chatList">
+                    <div style="padding: 40px; text-align: center;">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 10px; color: var(--text-secondary);">Loading chats...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="searchTab" style="display: none;">
+                <div class="search-box" style="position: relative;">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" id="messageSearch" placeholder="Search messages...">
+                </div>
+                <div class="chat-list" id="searchResults">
+                    <div class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <p>Type to search messages</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="chat-header-bar">
+                <div>
+                    <div class="chat-title" id="chatTitle">Select a chat</div>
+                    <div class="chat-status" id="chatStatus">Online</div>
+                </div>
+                <div class="action-buttons">
+                    <button class="icon-btn">
+                        <i class="fas fa-phone-alt"></i>
+                    </button>
+                    <button class="icon-btn">
+                        <i class="fas fa-video"></i>
+                    </button>
+                    <button class="icon-btn">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="welcome-screen">
+                    <div class="welcome-icon">
+                        <i class="fab fa-telegram"></i>
+                    </div>
+                    <h2>Welcome to Telegram Web</h2>
+                    <p>Select a chat from the sidebar to start messaging or search for conversations</p>
+                </div>
+            </div>
+
+            <div class="message-input-container" id="messageInputContainer" style="display: none;">
+                <textarea class="message-input" id="messageInput" placeholder="Type a message..." rows="1"></textarea>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let socket;
+        let currentChatId = null;
+        let chats = [];
+        let currentUser = 'User';
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+
+        // Initialize Socket.IO with better error handling
+        function initSocket() {
+            socket = io({
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                reconnectionAttempts: maxReconnectAttempts
+            });
+
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                reconnectAttempts = 0;
+                checkLogin();
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from server');
+                showToast('Disconnected from server', 'warning');
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                reconnectAttempts++;
+                if (reconnectAttempts >= maxReconnectAttempts) {
+                    showToast('Unable to connect to server', 'error');
+                }
+            });
+
+            socket.on('status', (status) => {
+                updateStatus(status);
+            });
+
+            socket.on('new_message', (data) => {
+                handleNewMessage(data);
+            });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initSocket();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Message input auto-resize
+            const messageInput = document.getElementById('messageInput');
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+
+            // Send on Enter (but allow Shift+Enter for newlines)
+            messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Chat search
+            document.getElementById('chatSearch').addEventListener('input', function() {
+                filterChats(this.value);
+            });
+
+            // Message search with debounce
+            let searchTimeout;
+            document.getElementById('messageSearch').addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const query = this.value.trim();
+                if (query.length > 2) {
+                    searchTimeout = setTimeout(() => searchMessages(query), 500);
+                } else {
+                    document.getElementById('searchResults').innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-search"></i>
+                            <p>Type to search messages</p>
+                        </div>
+                    `;
+                }
+            });
+
+            // Login form handlers
+            document.getElementById('sendCodeBtn').addEventListener('click', sendCode);
+            document.getElementById('verifyCodeBtn').addEventListener('click', verifyCode);
+            document.getElementById('verifyPasswordBtn').addEventListener('click', verifyPassword);
+
+            // Enter key on login inputs
+            document.getElementById('phoneInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') sendCode();
+            });
+            document.getElementById('codeInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') verifyCode();
+            });
+            document.getElementById('passwordInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') verifyPassword();
+            });
+
+            // Request notification permission
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+
+        // API Functions
+        async function checkLogin() {
+            try {
+                const response = await fetch('/api/check_login');
+                const data = await response.json();
+                
+                if (data.logged_in) {
+                    document.getElementById('loginModal').classList.add('hidden');
+                    await loadUserInfo();
+                    await loadChats();
+                } else {
+                    document.getElementById('loginModal').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Check login error:', error);
+                showToast('Connection error', 'error');
+            }
+        }
+
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/api/user_info');
+                const data = await response.json();
+                if (data.success) {
+                    currentUser = data.name || 'User';
+                    document.getElementById('userName').textContent = currentUser;
+                }
+            } catch (error) {
+                console.error('Load user info error:', error);
+            }
+        }
+
+        async function sendCode() {
+            const phone = document.getElementById('phoneInput').value.trim();
+            if (!phone) {
+                showLoginError('Please enter a phone number');
+                return;
+            }
+
+            const btn = document.getElementById('sendCodeBtn');
+            setButtonLoading(btn, true);
+            hideLoginError();
+
+            try {
+                const response = await fetch('/api/send_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showStep(2);
+                    setTimeout(() => document.getElementById('codeInput').focus(), 100);
+                } else {
+                    showLoginError(data.error || 'Failed to send code');
+                }
+            } catch (error) {
+                showLoginError('Connection error: ' + error.message);
+            } finally {
+                setButtonLoading(btn, false);
+            }
+        }
+
+        async function verifyCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) {
+                showLoginError('Please enter the verification code');
+                return;
+            }
+
+            const btn = document.getElementById('verifyCodeBtn');
+            setButtonLoading(btn, true);
+            hideLoginError();
+
+            try {
+                const response = await fetch('/api/verify_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('loginModal').classList.add('hidden');
+                    await loadUserInfo();
+                    await loadChats();
+                    showToast('Successfully logged in!', 'success');
+                } else {
+                    if (data.error === '2fa_required') {
+                        showStep(3);
+                        setTimeout(() => document.getElementById('passwordInput').focus(), 100);
+                    } else {
+                        showLoginError(data.error || 'Verification failed');
+                    }
+                }
+            } catch (error) {
+                showLoginError('Connection error: ' + error.message);
+            } finally {
+                setButtonLoading(btn, false);
+            }
+        }
+
+        async function verifyPassword() {
+            const password = document.getElementById('passwordInput').value;
+            if (!password) {
+                showLoginError('Please enter your password');
+                return;
+            }
+
+            const btn = document.getElementById('verifyPasswordBtn');
+            setButtonLoading(btn, true);
+            hideLoginError();
+
+            try {
+                const response = await fetch('/api/verify_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('loginModal').classList.add('hidden');
+                    await loadUserInfo();
+                    await loadChats();
+                    showToast('Successfully logged in!', 'success');
+                } else {
+                    showLoginError(data.error || 'Login failed');
+                }
+            } catch (error) {
+                showLoginError('Connection error: ' + error.message);
+            } finally {
+                setButtonLoading(btn, false);
+            }
+        }
+
+        async function logout() {
+            if (!confirm('Are you sure you want to logout?')) return;
+
+            try {
+                const response = await fetch('/api/logout', { method: 'POST' });
+                if (response.ok) {
+                    // Reset UI
+                    document.getElementById('loginModal').classList.remove('hidden');
+                    showStep(1);
+                    document.getElementById('phoneInput').value = '';
+                    document.getElementById('codeInput').value = '';
+                    document.getElementById('passwordInput').value = '';
+                    document.getElementById('messagesContainer').innerHTML = `
+                        <div class="welcome-screen">
+                            <div class="welcome-icon"><i class="fab fa-telegram"></i></div>
+                            <h2>Welcome to Telegram Web</h2>
+                            <p>Select a chat from the sidebar to start messaging</p>
+                        </div>
+                    `;
+                    document.getElementById('messageInputContainer').style.display = 'none';
+                    showToast('Logged out successfully', 'success');
+                }
+            } catch (error) {
+                showToast('Logout error: ' + error.message, 'error');
+            }
+        }
+
+        async function loadChats() {
+            const chatList = document.getElementById('chatList');
+            chatList.innerHTML = `
+                <div style="padding: 40px; text-align: center;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 10px; color: var(--text-secondary);">Loading chats...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch('/api/dialogs');
+                const data = await response.json();
+
+                if (data.success) {
+                    chats = data.dialogs;
+                    renderChats(chats);
+                } else {
+                    chatList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>Failed to load chats</p>
+                        </div>
+                    `;
+                    showToast('Failed to load chats', 'error');
+                }
+            } catch (error) {
+                chatList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Connection error</p>
+                    </div>
+                `;
+                showToast('Connection error', 'error');
+            }
+        }
+
+        function renderChats(chatList) {
+            const chatListEl = document.getElementById('chatList');
+            
+            if (chatList.length === 0) {
+                chatListEl.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-comments"></i>
+                        <p>No conversations found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            chatListEl.innerHTML = chatList.map(chat => {
+                const initials = chat.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                const time = chat.date ? formatTime(new Date(chat.date)) : '';
+                
+                return `
+                    <div class="chat-item" data-chat-id="${chat.id}" onclick="selectChat(${chat.id}, '${escapeHtml(chat.name)}')">
+                        <div class="chat-avatar">${initials}</div>
+                        <div class="chat-info">
+                            <div class="chat-header">
+                                <div class="chat-name">${escapeHtml(chat.name)}</div>
+                                ${time ? `<div class="chat-time">${time}</div>` : ''}
+                            </div>
+                            <div class="chat-preview">
+                                ${escapeHtml(chat.last_message || '')}
+                                ${chat.unread_count > 0 ? `<span class="unread-badge">${chat.unread_count}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterChats(query) {
+            if (!query) {
+                renderChats(chats);
+                return;
+            }
+
+            const filtered = chats.filter(chat => 
+                chat.name.toLowerCase().includes(query.toLowerCase())
+            );
+            renderChats(filtered);
+        }
+
+        async function selectChat(chatId, chatName) {
+            currentChatId = chatId;
+            document.getElementById('chatTitle').textContent = chatName;
+            document.getElementById('messageInputContainer').style.display = 'flex';
+            
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = `
+                <div style="margin: auto;">
+                    <div class="loading-spinner"></div>
+                </div>
+            `;
+
+            // Update active chat
+            document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`[data-chat-id="${chatId}"]`)?.classList.add('active');
+
+            try {
+                const response = await fetch(`/api/messages/${chatId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    container.innerHTML = '';
+                    data.messages.forEach(msg => appendMessage(msg));
+                    scrollToBottom();
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>Failed to load messages</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Connection error</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message || !currentChatId) return;
+
+            // Optimistic UI update
+            appendMessage({
+                text: message,
+                sender_name: currentUser,
+                date: new Date().toISOString(),
+                is_outgoing: true
+            });
+
+            input.value = '';
+            input.style.height = 'auto';
+
+            try {
+                const response = await fetch('/api/send_message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: currentChatId, message })
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    showToast('Failed to send message', 'error');
+                }
+            } catch (error) {
+                showToast('Error sending message', 'error');
+            }
+        }
+
+        function appendMessage(msg) {
+            const container = document.getElementById('messagesContainer');
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${msg.is_outgoing ? 'outgoing' : 'incoming'}`;
+
+            const initials = msg.sender_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            const time = formatTime(new Date(msg.date));
+
+            messageEl.innerHTML = `
+                <div class="message-avatar">${initials}</div>
+                <div>
+                    ${!msg.is_outgoing ? `<div class="message-sender">${escapeHtml(msg.sender_name)}</div>` : ''}
+                    <div class="message-bubble">
+                        <div class="message-text">${escapeHtml(msg.text)}</div>
+                        <div class="message-time">
+                            ${time}
+                            ${msg.is_outgoing ? '<i class="fas fa-check"></i>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(messageEl);
+            scrollToBottom();
+        }
+
+        async function searchMessages(query) {
+            const resultsEl = document.getElementById('searchResults');
+            resultsEl.innerHTML = `
+                <div style="padding: 40px; text-align: center;">
+                    <div class="loading-spinner"></div>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.success && data.results.length > 0) {
+                    resultsEl.innerHTML = data.results.map(result => `
+                        <div class="chat-item" onclick="selectChat(${result.chat_id}, '${escapeHtml(result.chat_name)}')">
+                            <div class="chat-avatar">
+                                <i class="fas fa-comment"></i>
+                            </div>
+                            <div class="chat-info">
+                                <div class="chat-header">
+                                    <div class="chat-name">${escapeHtml(result.chat_name)}</div>
+                                    <div class="chat-time">${formatDate(new Date(result.date))}</div>
+                                </div>
+                                <div class="chat-preview">${escapeHtml(result.text)}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    resultsEl.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-search"></i>
+                            <p>No results found</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsEl.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Search error</p>
+                    </div>
+                `;
+            }
+        }
+
+        function handleNewMessage(data) {
+            if (currentChatId && data.chat_id == currentChatId) {
+                appendMessage({
+                    text: data.message,
+                    sender_name: data.sender_name,
+                    date: new Date().toISOString(),
+                    is_outgoing: false
+                });
+            }
+            loadChats();
+            showNotification(data.chat_name, data.message);
+        }
+
+        // UI Helper Functions
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('chatsTab').style.display = tab === 'chats' ? 'block' : 'none';
+            document.getElementById('searchTab').style.display = tab === 'search' ? 'block' : 'none';
+        }
+
+        function showStep(step) {
+            document.querySelectorAll('.login-step').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.step').forEach((el, i) => {
+                el.classList.toggle('active', i === step - 1);
+            });
+
+            const steps = ['phone', 'code', 'password'];
+            document.getElementById(`${steps[step - 1]}Step`).classList.add('active');
+        }
+
+        function showLoginError(message) {
+            const errorEl = document.getElementById('loginError');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        function hideLoginError() {
+            document.getElementById('loginError').classList.remove('show');
+        }
+
+        function setButtonLoading(btn, loading) {
+            const span = btn.querySelector('span');
+            if (loading) {
+                btn.disabled = true;
+                span.innerHTML = '<div class="loading-spinner"></div>';
+            } else {
+                btn.disabled = false;
+                span.textContent = btn.id === 'sendCodeBtn' ? 'Send Code' : 
+                                   btn.id === 'verifyCodeBtn' ? 'Verify Code' : 'Sign In';
+            }
+        }
+
+        function updateStatus(status) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            
+            if (status.connected && status.authenticated) {
+                dot.classList.remove('offline');
+                text.textContent = 'Online';
+            } else {
+                dot.classList.add('offline');
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const icon = type === 'success' ? 'check-circle' : 
+                        type === 'error' ? 'exclamation-circle' : 
+                        type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+            
+            toast.innerHTML = `<i class="fas fa-${icon}" style="margin-right: 10px;"></i> ${message}`;
+            toast.classList.add('show');
+            
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function showNotification(title, body) {
+            if (!document.hasFocus() && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: body,
+                    icon: 'https://telegram.org/img/t_logo.png',
+                    badge: 'https://telegram.org/img/t_logo.png'
+                });
+            }
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('messagesContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function formatTime(date) {
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const formattedHours = hours % 12 || 12;
+            return `${formattedHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function appendMessage(msg) {
+            const container = document.getElementById('messagesContainer');
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${msg.is_outgoing ? 'outgoing' : 'incoming'}`;
+
+            const initials = (msg.sender_name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            const time = formatTime(new Date(msg.date));
+
+            // Determine bubble content (text + optional media)
+            let mediaHtml = '';
+            if (msg.media && msg.media_type) {
+                // If media is a data URL image, render <img>
+                if (msg.media_type === 'photo' && typeof msg.media === 'string' && msg.media.startsWith('data:image/')) {
+                    mediaHtml = `<div class="message-media"><img src="${msg.media}" alt="image" /></div>`;
+                } else {
+                    // show textual placeholder (image too large, document, etc.)
+                    mediaHtml = `<div class="message-media"><em>${escapeHtml(String(msg.media))}</em></div>`;
+                }
+            }
+
+            // message text (escapeHtml) - if message.text can be empty, we still want to show media
+            const textHtml = msg.text ? `<div class="message-text">${escapeHtml(msg.text)}</div>` : '';
+
+            messageEl.innerHTML = `
+                <div class="message-avatar">${initials}</div>
+                <div>
+                    ${!msg.is_outgoing ? `<div class="message-sender">${escapeHtml(msg.sender_name)}</div>` : ''}
+                    <div class="message-bubble">
+                        ${mediaHtml}
+                        ${textHtml}
+                        <div class="message-time">
+                            ${time}
+                            ${msg.is_outgoing ? '<i class="fas fa-check"></i>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(messageEl);
+            scrollToBottom();
+        }
+
+        // When receiving 'new_message' from socket, it now may include media & media_type
+        function handleNewMessage(data) {
+            if (currentChatId && data.chat_id == currentChatId) {
+                appendMessage({
+                    text: data.message,
+                    sender_name: data.sender_name,
+                    date: new Date().toISOString(),
+                    is_outgoing: false,
+                    media: data.media,
+                    media_type: data.media_type
+                });
+            }
+            loadChats();
+            showNotification(data.chat_name, data.message);
+        }
+
+        // ensure that when loading messages from /api/messages they render media too
+        async function selectChat(chatId, chatName) {
+            currentChatId = chatId;
+            document.getElementById('chatTitle').textContent = chatName;
+            document.getElementById('messageInputContainer').style.display = 'flex';
+
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = `
+                <div style="margin: auto;">
+                    <div class="loading-spinner"></div>
+                </div>
+            `;
+
+            // Update active chat
+            document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`[data-chat-id="${chatId}"]`)?.classList.add('active');
+
+            try {
+                const response = await fetch(`/api/messages/${chatId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    container.innerHTML = '';
+                    data.messages.forEach(msg => {
+                        appendMessage(msg);
+                    });
+                    scrollToBottom();
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>Failed to load messages</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Connection error</p>
+                    </div>
+                `;
+            }
+        }
+        
+        
+    </script>
+</body>
+</html>
